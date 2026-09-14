@@ -29,6 +29,7 @@ class AppController {
       }
     }
     return {
+      userName: "Jamoliddin",
       xp: 0,
       streak: 1,
       hearts: 5,
@@ -948,6 +949,10 @@ class AppController {
     if (input) {
       input.value = window.groqTutor.getApiKey();
     }
+    const nameInput = document.getElementById("settings-user-name");
+    if (nameInput) {
+      nameInput.value = this.state.userName || "Jamoliddin";
+    }
   }
 
   saveApiKeyFromInput() {
@@ -956,6 +961,45 @@ class AppController {
       window.groqTutor.setApiKey(input.value.trim());
       window.soundFX.playCorrect();
       alert("✅ Groq API kaliti muvaffaqiyatli saqlandi!");
+    }
+  }
+
+  updateUserName(name) {
+    if (!name || !name.trim()) return;
+    this.state.userName = name.trim();
+    this.saveState();
+    alert("✅ Ismingiz saqlandi: " + this.state.userName);
+  }
+
+  exportProgress() {
+    try {
+      const dataStr = btoa(unescape(encodeURIComponent(JSON.stringify(this.state))));
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(dataStr);
+        alert("✅ Natijalaringiz nusxalandi! Ushbu kodni do'stingizga berishingiz yoki boshqa telefonga o'tkazishingiz mumkin.");
+      } else {
+        prompt("Ushbu zaxira kodini nusxalab oling:", dataStr);
+      }
+    } catch(e) {
+      alert("Nusxalashda xatolik.");
+    }
+  }
+
+  importProgress() {
+    const code = prompt("Zaxira nusxa kodini kiriting:");
+    if (!code || !code.trim()) return;
+    try {
+      const decoded = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+      if (decoded && Array.isArray(decoded.unlockedUnits)) {
+        this.state = decoded;
+        this.saveState();
+        this.renderRoadmap();
+        alert("🎉 Natijalaringiz muvaffaqiyatli tiklandi!");
+      } else {
+        alert("Noto'g'ri kod formati.");
+      }
+    } catch(e) {
+      alert("Kod xato kiritildi.");
     }
   }
 

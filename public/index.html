@@ -291,6 +291,22 @@
         </div>
 
         <div class="deploy-card">
+          <h3 style="font-family: var(--font-heading); margin-bottom: 12px;">👤 Foydalanuvchi Profili va Zaxira (Backup)</h3>
+          <p style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 14px;">
+            Har bir insonning o'z natijalari (XP, darslar, jonlar) faqat o'z telefonida mustaqil saqlanadi. 
+            Do'stingiz kirsa, uniki o'zida alohida bo'ladi!
+          </p>
+          <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+            <input type="text" id="settings-user-name" class="chat-input-field" placeholder="Ismingiz (masalan: Jamoliddin)" style="max-width: 320px;">
+            <button class="btn-duo btn-duo-blue" onclick="app.updateUserName(document.getElementById('settings-user-name').value)">Ismni saqlash</button>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn-duo btn-duo-secondary" onclick="app.exportProgress()">💾 Natijalarni nusxalash (Eksport)</button>
+            <button class="btn-duo btn-duo-secondary" onclick="app.importProgress()">📥 Zaxiradan tiklash (Import)</button>
+          </div>
+        </div>
+
+        <div class="deploy-card">
           <h3 style="font-family: var(--font-heading); margin-bottom: 12px;">🔑 Groq API Kaliti Sozlamasi</h3>
           <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 14px;">
             Siz taqdim etgan kalit tizimga o'rnatilgan. Xohlasangiz boshqa kalit kiritishingiz mumkin:
