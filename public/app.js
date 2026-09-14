@@ -1,17 +1,21 @@
 // EngMastery AI Core Application Controller
-// Manages progress, gamification, exercise engine, and AI interactions
+// Manages progress, gamification, exercise engine, teaching phase, and AI interactions
+// v3.0 — Complete rewrite with Teaching Phase, bug fixes, and mobile support
 
 class AppController {
   constructor() {
-    this.storageKey = "engmastery_user_state_v2"; // upgraded version
+    this.storageKey = "engmastery_user_state_v3";
     this.state = this.loadState();
     this.currentLesson = null;
     this.currentExIndex = 0;
+    this.teachingPhaseActive = false;
+    this.teachingCardIndex = 0;
     this.activeTab = "roadmap";
     this.isRecording = false;
     this.assembledChips = [];
     this.selectedOptionIndex = null;
     this.exerciseAnswered = false;
+    this.latestTranscript = "";
 
     this.init();
   }
@@ -29,12 +33,12 @@ class AppController {
       }
     }
     return {
-      userName: "Jamoliddin",
+      userName: "O'rganuvchi",
       xp: 0,
       streak: 1,
       hearts: 5,
-      completedUnits: [], // Toza holat
-      unlockedUnits: ["l1-u1"], // Faqat 1-dars ochiq
+      completedUnits: [],
+      unlockedUnits: ["l1-u1"],
       userLevel: "A1 Starter",
       lastActiveDate: new Date().toDateString()
     };
@@ -48,12 +52,13 @@ class AppController {
   init() {
     this.updateHeaderStats();
     this.bindNavigation();
-    this.switchTab("roadmap"); // Har doim darslar xaritasidan boshlanadi
+    this.switchTab("roadmap");
     this.renderRoadmap();
     this.initAIInteractions();
     this.initShadowingStudio();
     this.initConfetti();
     this.initSettings();
+    this.bindMobileNav();
   }
 
   updateHeaderStats() {
@@ -66,13 +71,69 @@ class AppController {
     if (xpEl) xpEl.textContent = this.state.xp;
     if (heartsEl) heartsEl.textContent = this.state.hearts;
     if (modalHearts) modalHearts.textContent = this.state.hearts;
+
+    // Update sidebar user info
+    const sidebarName = document.querySelector(".sidebar-user-card .name");
+    const avatarCircle = document.querySelector(".avatar-circle");
+    if (sidebarName) sidebarName.textContent = this.state.userName;
+    if (avatarCircle) avatarCircle.textContent = (this.state.userName || "U")[0].toUpperCase();
   }
 
   refillHearts() {
     window.soundFX.playCorrect();
     this.state.hearts = 5;
     this.saveState();
-    alert("❤️ Jonlaringiz to'liq tiklandi (5/5)!");
+    this.showToast("❤️ Jonlaringiz to'liq tiklandi (5/5)!", "success");
+  }
+
+  // ==========================================
+  // TOAST NOTIFICATION (REPLACES ALERTS)
+  // ==========================================
+  showToast(message, type = "info") {
+    const existing = document.getElementById("toast-notification");
+    if (existing) existing.remove();
+
+    const toast = document.createElement("div");
+    toast.id = "toast-notification";
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `<span>${message}</span>`;
+    document.body.appendChild(toast);
+
+    requestAnimationFrame(() => toast.classList.add("show"));
+    setTimeout(() => {
+      toast.classList.remove("show");
+      setTimeout(() => toast.remove(), 350);
+    }, 3000);
+  }
+
+  // ==========================================
+  // MOBILE NAVIGATION
+  // ==========================================
+  bindMobileNav() {
+    const mobileToggle = document.getElementById("mobile-menu-toggle");
+    const sidebar = document.querySelector(".app-sidebar");
+    const overlay = document.getElementById("sidebar-overlay");
+
+    if (mobileToggle && sidebar) {
+      mobileToggle.addEventListener("click", () => {
+        sidebar.classList.toggle("open");
+        if (overlay) overlay.classList.toggle("active");
+      });
+    }
+
+    if (overlay) {
+      overlay.addEventListener("click", () => {
+        if (sidebar) sidebar.classList.remove("open");
+        overlay.classList.remove("active");
+      });
+    }
+  }
+
+  closeMobileSidebar() {
+    const sidebar = document.querySelector(".app-sidebar");
+    const overlay = document.getElementById("sidebar-overlay");
+    if (sidebar) sidebar.classList.remove("open");
+    if (overlay) overlay.classList.remove("active");
   }
 
   bindNavigation() {
@@ -82,6 +143,7 @@ class AppController {
         window.soundFX.playClick();
         const tab = btn.dataset.tab;
         this.switchTab(tab);
+        this.closeMobileSidebar();
       });
     });
   }
@@ -95,6 +157,11 @@ class AppController {
 
     document.querySelectorAll(".tab-pane").forEach(pane => {
       pane.classList.toggle("active", pane.id === `tab-${tabId}`);
+    });
+
+    // Update mobile bottom nav
+    document.querySelectorAll(".bottom-nav-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.tab === tabId);
     });
 
     if (tabId === "roadmap") {
@@ -138,6 +205,10 @@ class AppController {
           btnDisabled = "";
         }
 
+        // Show vocab count
+        const vocabCount = unit.teaching ? unit.teaching.vocabulary.length : 0;
+        const exerciseCount = unit.exercises.length;
+
         unitsHtml += `
           <div class="unit-card ${statusClass}">
             <div>
@@ -148,6 +219,10 @@ class AppController {
               <h4 class="unit-title">${unit.title}</h4>
               <div class="grammar-preview">
                 <strong>Grammatika:</strong> ${unit.grammarTip.title}
+              </div>
+              <div class="unit-meta-info">
+                <span>📖 ${vocabCount} yangi so'z</span>
+                <span>✏️ ${exerciseCount} mashq</span>
               </div>
             </div>
             <div class="unit-footer">
@@ -179,12 +254,13 @@ class AppController {
   }
 
   // ==========================================
-  // LESSON PRACTICE ENGINE
+  // LESSON START — WITH TEACHING PHASE
   // ==========================================
   startLesson(levelId, unitId) {
     window.soundFX.playClick();
 
     if (this.state.hearts <= 0) {
+      this.showToast("❤️ Jonlaringiz tugagan! Tiklash tugmasini bosing.", "warning");
       if (confirm("❤️ Jonlaringiz tugagan! Jonlarni to'ldirib davom etasizmi?")) {
         this.refillHearts();
       } else {
@@ -199,14 +275,24 @@ class AppController {
 
     this.currentLesson = unit;
     this.currentExIndex = 0;
+    this.teachingCardIndex = 0;
     this.openLessonModal();
-    this.renderExercise();
+
+    // First show teaching phase if available
+    if (unit.teaching) {
+      this.teachingPhaseActive = true;
+      this.renderTeachingIntro();
+    } else {
+      this.teachingPhaseActive = false;
+      this.renderExercise();
+    }
   }
 
   openLessonModal() {
     const modal = document.getElementById("lesson-modal");
     if (modal) {
       modal.classList.add("active");
+      document.body.style.overflow = "hidden";
       this.updateHeaderStats();
     }
   }
@@ -215,20 +301,209 @@ class AppController {
     window.soundFX.playClick();
     const modal = document.getElementById("lesson-modal");
     if (modal) modal.classList.remove("active");
+    document.body.style.overflow = "";
     if (this.recognition) {
       try { this.recognition.stop(); } catch(e){}
     }
   }
 
+  // ==========================================
+  // TEACHING PHASE — AVVAL O'RGATISH
+  // ==========================================
+  renderTeachingIntro() {
+    const unit = this.currentLesson;
+    const teaching = unit.teaching;
+    const body = document.getElementById("lesson-body");
+    const footer = document.getElementById("lesson-footer");
+
+    // Update progress bar to 0
+    const pBar = document.getElementById("lesson-progress-bar");
+    if (pBar) pBar.style.width = "0%";
+
+    body.innerHTML = `
+      <div class="teaching-intro-container">
+        <div class="teaching-icon-big">📖</div>
+        <h2 class="teaching-intro-title">${teaching.title}</h2>
+        <p class="teaching-intro-desc">${teaching.intro}</p>
+        
+        <div class="teaching-stats-row">
+          <div class="teaching-stat">
+            <span class="teaching-stat-num">${teaching.vocabulary.length}</span>
+            <span>yangi so'z</span>
+          </div>
+          <div class="teaching-stat">
+            <span class="teaching-stat-num">1</span>
+            <span>grammatika qoidasi</span>
+          </div>
+          <div class="teaching-stat">
+            <span class="teaching-stat-num">${unit.exercises.length}</span>
+            <span>mashq</span>
+          </div>
+        </div>
+
+        <p class="teaching-reassurance">⏱ Avval so'zlar va qoidalarni o'rganasiz, keyin mashqlar boshlanadi</p>
+      </div>
+    `;
+
+    footer.innerHTML = `
+      <div></div>
+      <button class="btn-duo btn-duo-green" onclick="app.startVocabTeaching()">O'rganishni boshlash ➔</button>
+    `;
+  }
+
+  startVocabTeaching() {
+    window.soundFX.playClick();
+    this.teachingCardIndex = 0;
+    this.renderVocabCard();
+  }
+
+  renderVocabCard() {
+    const unit = this.currentLesson;
+    const teaching = unit.teaching;
+    const vocab = teaching.vocabulary;
+    const idx = this.teachingCardIndex;
+    const total = vocab.length;
+
+    if (idx >= total) {
+      // Move to grammar lesson
+      this.renderGrammarLesson();
+      return;
+    }
+
+    const card = vocab[idx];
+    const body = document.getElementById("lesson-body");
+    const footer = document.getElementById("lesson-footer");
+
+    // Update progress
+    const pBar = document.getElementById("lesson-progress-bar");
+    const totalSteps = total + 1 + unit.exercises.length; // vocab + grammar + exercises
+    const pct = Math.round(((idx + 1) / totalSteps) * 100);
+    if (pBar) pBar.style.width = `${pct}%`;
+
+    body.innerHTML = `
+      <div class="teaching-vocab-container">
+        <div class="teaching-phase-badge">📖 So'z o'rganish — ${idx + 1} / ${total}</div>
+        
+        <div class="vocab-card-main">
+          <div class="vocab-word-big">
+            ${card.word}
+            <button class="btn-listen-sm" onclick="app.speakText('${card.audioText.replace(/'/g, "\\'")}')">🔊</button>
+          </div>
+          
+          <div class="vocab-pronunciation">${card.pronunciation}</div>
+          
+          <div class="vocab-meaning">
+            <span class="vocab-meaning-label">Ma'nosi:</span>
+            <span class="vocab-meaning-text">${card.meaning}</span>
+          </div>
+
+          <div class="vocab-example-box">
+            <div class="vocab-example-en">
+              <span class="example-label">🇬🇧 Misol:</span>
+              <span>"${card.example}"</span>
+              <button class="btn-listen-sm" onclick="app.speakText('${card.example.replace(/'/g, "\\'")}')">🔊</button>
+            </div>
+            <div class="vocab-example-uz">
+              <span class="example-label">🇺🇿 Tarjimasi:</span>
+              <span>${card.exampleUz}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="vocab-card-dots">
+          ${vocab.map((_, i) => `<span class="dot ${i === idx ? 'active' : i < idx ? 'done' : ''}"></span>`).join('')}
+        </div>
+      </div>
+    `;
+
+    // Auto speak the word
+    setTimeout(() => this.speakText(card.audioText), 400);
+
+    footer.innerHTML = `
+      <div></div>
+      <button class="btn-duo btn-duo-green" onclick="app.nextVocabCard()">
+        ${idx + 1 < total ? "Keyingi so'z ➔" : "Grammatikaga o'tish ➔"}
+      </button>
+    `;
+  }
+
+  nextVocabCard() {
+    window.soundFX.playClick();
+    this.teachingCardIndex++;
+    this.renderVocabCard();
+  }
+
+  renderGrammarLesson() {
+    const unit = this.currentLesson;
+    const teaching = unit.teaching;
+    const grammar = teaching.grammarLesson;
+    const body = document.getElementById("lesson-body");
+    const footer = document.getElementById("lesson-footer");
+
+    // Update progress
+    const pBar = document.getElementById("lesson-progress-bar");
+    const totalSteps = teaching.vocabulary.length + 1 + unit.exercises.length;
+    const pct = Math.round(((teaching.vocabulary.length + 1) / totalSteps) * 100);
+    if (pBar) pBar.style.width = `${pct}%`;
+
+    let rulesHtml = grammar.rules.map(rule => `
+      <div class="grammar-rule-row">
+        <div class="grammar-rule-subject">${rule.subject}</div>
+        <div class="grammar-rule-verb">${rule.verb}</div>
+        <div class="grammar-rule-example">
+          <div class="grammar-ex-en">🇬🇧 ${rule.example}</div>
+          <div class="grammar-ex-uz">🇺🇿 ${rule.exampleUz}</div>
+        </div>
+      </div>
+    `).join('');
+
+    body.innerHTML = `
+      <div class="teaching-grammar-container">
+        <div class="teaching-phase-badge">📐 Grammatika Qoidasi</div>
+        
+        <h3 class="grammar-title">${grammar.title}</h3>
+        <p class="grammar-explanation">${grammar.explanation}</p>
+
+        <div class="grammar-rules-table">
+          ${rulesHtml}
+        </div>
+
+        <div class="grammar-ready-note">
+          ✅ Endi siz tayyor! Mashqlarga o'tib, o'rganganlaringizni tekshirib ko'ring.
+        </div>
+      </div>
+    `;
+
+    footer.innerHTML = `
+      <div></div>
+      <button class="btn-duo btn-duo-green" onclick="app.startExercisePhase()">Mashqlarga o'tish ➔</button>
+    `;
+  }
+
+  startExercisePhase() {
+    window.soundFX.playClick();
+    window.soundFX.playCorrect();
+    this.teachingPhaseActive = false;
+    this.currentExIndex = 0;
+    this.renderExercise();
+  }
+
+  // ==========================================
+  // EXERCISE ENGINE
+  // ==========================================
   renderExercise() {
     const unit = this.currentLesson;
     const total = unit.exercises.length;
     const current = this.currentExIndex;
     const ex = unit.exercises[current];
     this.exerciseAnswered = false;
+    this.latestTranscript = "";
 
     // Progress Bar
-    const pct = Math.round(((current + 1) / total) * 100);
+    const teaching = unit.teaching;
+    const teachingSteps = teaching ? teaching.vocabulary.length + 1 : 0;
+    const totalSteps = teachingSteps + total;
+    const pct = Math.round(((teachingSteps + current + 1) / totalSteps) * 100);
     const pBar = document.getElementById("lesson-progress-bar");
     if (pBar) pBar.style.width = `${pct}%`;
 
@@ -279,6 +554,7 @@ class AppController {
 
     body.innerHTML = `
       <div class="exercise-container">
+        <div class="exercise-phase-badge">✏️ Mashq — ${this.currentExIndex + 1} / ${this.currentLesson.exercises.length}</div>
         <h3 class="exercise-question">${ex.question}</h3>
         ${promptHtml}
         <div class="options-grid">
@@ -301,7 +577,7 @@ class AppController {
 
   checkChoiceAnswer(ex) {
     if (this.selectedOptionIndex === null) {
-      alert("Iltimos, avval variantlardan birini tanlang!");
+      this.showToast("⚠️ Avval variantlardan birini tanlang!", "warning");
       return;
     }
     if (this.exerciseAnswered) return;
@@ -314,7 +590,7 @@ class AppController {
     if (isCorrect) {
       window.soundFX.playCorrect();
       if (selectedBtn) selectedBtn.classList.add("correct");
-      this.showFeedback(true, "Ajoyib! To'g'ri javob!");
+      this.showFeedback(true, "🎉 Ajoyib! To'g'ri javob!");
     } else {
       window.soundFX.playWrong();
       if (selectedBtn) selectedBtn.classList.add("wrong");
@@ -325,11 +601,12 @@ class AppController {
     }
   }
 
-  // SENTENCE BUILDER (BUG FIXED)
+  // SENTENCE BUILDER
   renderSentenceBuilder(ex, body) {
     this.assembledChips = [];
     body.innerHTML = `
       <div class="exercise-container">
+        <div class="exercise-phase-badge">✏️ Mashq — ${this.currentExIndex + 1} / ${this.currentLesson.exercises.length}</div>
         <h3 class="exercise-question">${ex.question}</h3>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
           <small style="color: var(--text-muted);">So'zlarni ketma-ket bosing:</small>
@@ -362,7 +639,7 @@ class AppController {
           this.assembledChips.push(item);
 
           const placedChip = document.createElement("div");
-          placedChip.className = "word-chip";
+          placedChip.className = "word-chip placed";
           placedChip.textContent = item.word;
           placedChip.dataset.sourceId = item.id;
 
@@ -395,7 +672,7 @@ class AppController {
 
   checkSentenceAnswer(ex) {
     if (this.assembledChips.length === 0) {
-      alert("Iltimos, avval so'zlarni jumlaga tering!");
+      this.showToast("⚠️ Avval so'zlarni jumlaga tering!", "warning");
       return;
     }
     if (this.exerciseAnswered) return;
@@ -406,7 +683,7 @@ class AppController {
 
     if (isCorrect) {
       window.soundFX.playCorrect();
-      this.showFeedback(true, "Zo'r! Jumla to'g'ri tuzildi!");
+      this.showFeedback(true, "🎉 Zo'r! Jumla to'g'ri tuzildi!");
     } else {
       window.soundFX.playWrong();
       this.state.hearts = Math.max(0, this.state.hearts - 1);
@@ -415,39 +692,39 @@ class AppController {
     }
   }
 
-  // SPEAKING EXERCISE (NO BOTTLENECK / FAILSAFE DESIGN)
+  // SPEAKING EXERCISE
   renderSpeakingExercise(ex, body) {
     const hasSpeechRec = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
     body.innerHTML = `
       <div class="exercise-container">
+        <div class="exercise-phase-badge">🎙️ Speaking Mashq — ${this.currentExIndex + 1} / ${this.currentLesson.exercises.length}</div>
         <h3 class="exercise-question">${ex.question}</h3>
         
         <div class="prompt-card" style="flex-direction: column; align-items: flex-start;">
           <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-            <span class="prompt-text" style="font-size: 1.25rem;">"${ex.targetText}"</span>
-            <button class="btn-listen-prompt" onclick="app.speakText('${ex.targetText.replace(/'/g, "\\'")}')">🔊</button>
+            <span class="prompt-text" style="font-size: 1.15rem;">"${ex.targetText}"</span>
+            <button class="btn-listen-prompt" onclick="app.speakText('${ex.targetText.replace(/'/g, "\\'")}')" title="Eshitish">🔊</button>
           </div>
-          <small style="color: var(--duo-blue); margin-top: 8px;">💡 Talaffuz maslahati: ${ex.hint}</small>
+          <small style="color: var(--duo-blue); margin-top: 8px;">💡 ${ex.hint}</small>
         </div>
 
         <div class="speaking-box">
           <div style="display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap;">
-            <button id="modal-mic-btn" class="mic-btn-large" onclick="app.toggleLessonMic('${ex.targetText.replace(/'/g, "\\'")}')">
+            <button id="modal-mic-btn" class="mic-btn-large" onclick="app.toggleLessonMic('${ex.targetText.replace(/'/g, "\\'")}')" title="Mikrofon">
               🎙️
             </button>
           </div>
-          <p id="mic-status-hint" style="font-weight: 600; color: var(--text-secondary); margin-top: 6px;">
-            ${hasSpeechRec ? "Mikrofonni bosing va baland ovozda ayting" : "Mikrofon brauzeringizda bloklangan (HTTPS talab qilinadi)"}
+          <p id="mic-status-hint" style="font-weight: 600; color: var(--text-secondary); margin-top: 6px; text-align: center;">
+            ${hasSpeechRec ? "Mikrofonni bosing va baland ovozda ayting" : "Mikrofon faqat HTTPS da ishlaydi"}
           </p>
           <div id="speech-transcript" class="speech-transcript-box">Ovozingiz shu yerda yoziladi...</div>
 
-          <!-- FAILSAFE BUTTONS SO USER IS NEVER STUCK -->
-          <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 380px;">
-            <button class="btn-duo btn-duo-secondary" style="font-size: 0.85rem; justify-content: center;" onclick="app.passSpeakingSelfPractice(true)">
+          <div class="speaking-fallback-btns">
+            <button class="btn-duo btn-duo-secondary" onclick="app.passSpeakingSelfPractice(true)">
               🗣️ Ovoz chiqarib aytdim (Davom etish)
             </button>
-            <button class="btn-duo btn-duo-secondary" style="font-size: 0.8rem; justify-content: center; opacity: 0.8;" onclick="app.showTypeInputFallback('${ex.targetText.replace(/'/g, "\\'")}')">
+            <button class="btn-duo btn-duo-secondary" style="opacity: 0.8;" onclick="app.showTypeInputFallback('${ex.targetText.replace(/'/g, "\\'")}')">
               ⌨️ Yozib tekshirish
             </button>
           </div>
@@ -490,7 +767,7 @@ class AppController {
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      hint.innerHTML = `<span style="color: #ff9600;">⚠️ Brauzeringizda mikrofon faqat HTTPS da ishlaydi. Quyidagi "Ovoz chiqarib aytdim" tugmasini bosing!</span>`;
+      if (hint) hint.innerHTML = `<span style="color: #ff9600;">⚠️ Brauzeringizda mikrofon faqat HTTPS da ishlaydi. Quyidagi "Ovoz chiqarib aytdim" tugmasini bosing!</span>`;
       return;
     }
 
@@ -501,7 +778,7 @@ class AppController {
       this.isRecording = false;
       if (btn) btn.classList.remove("recording");
       window.soundFX.playMicToggle(false);
-      hint.textContent = "To'xtatildi. Endi 'Tekshirish' tugmasini bosing.";
+      if (hint) hint.textContent = "To'xtatildi. Endi 'Tekshirish' tugmasini bosing.";
       return;
     }
 
@@ -515,7 +792,7 @@ class AppController {
         this.isRecording = true;
         if (btn) btn.classList.add("recording");
         window.soundFX.playMicToggle(true);
-        hint.textContent = "Tinglanmoqda... Gapiring!";
+        if (hint) hint.textContent = "Tinglanmoqda... Gapiring!";
         if (transcriptBox) transcriptBox.textContent = "";
       };
 
@@ -532,19 +809,19 @@ class AppController {
         console.error("Speech error", e);
         this.isRecording = false;
         if (btn) btn.classList.remove("recording");
-        hint.innerHTML = `<span style="color: #f87171;">Ovoz eshitilmadi. Pastdagi "Ovoz chiqarib aytdim" tugmasini bosishingiz mumkin.</span>`;
+        if (hint) hint.innerHTML = `<span style="color: #f87171;">Ovoz eshitilmadi. Pastdagi "Ovoz chiqarib aytdim" tugmasini bosishingiz mumkin.</span>`;
       };
 
       this.recognition.onend = () => {
         this.isRecording = false;
         if (btn) btn.classList.remove("recording");
-        hint.textContent = "Yozib olindi! 'Tekshirish' tugmasini bosing.";
+        if (hint) hint.textContent = "Yozib olindi! 'Tekshirish' tugmasini bosing.";
       };
 
       this.recognition.start();
     } catch (err) {
       console.error(err);
-      hint.textContent = "Mikrofonni yoqib bo'lmadi. Quyidagi tugmani bosing.";
+      if (hint) hint.textContent = "Mikrofonni yoqib bo'lmadi. Quyidagi tugmani bosing.";
     }
   }
 
@@ -555,7 +832,7 @@ class AppController {
     const spokenClean = spoken.replace(/[.,!?'"]/g, "");
 
     if (!spokenClean) {
-      alert("Iltimos, avval mikrofonga gapiring yoki 'Ovoz chiqarib aytdim' tugmasini bosing!");
+      this.showToast("⚠️ Avval mikrofonga gapiring yoki 'Ovoz chiqarib aytdim' tugmasini bosing!", "warning");
       return;
     }
     this.exerciseAnswered = true;
@@ -571,7 +848,7 @@ class AppController {
 
     if (accuracy >= 50) {
       window.soundFX.playCorrect();
-      this.showFeedback(true, `Ajoyib talaffuz! Moslik: ${accuracy}%`);
+      this.showFeedback(true, `🎉 Ajoyib talaffuz! Moslik: ${accuracy}%`);
     } else {
       window.soundFX.playWrong();
       this.showFeedback(false, `Talaffuz mosligi: ${accuracy}%. Yaxshi urinish, davom etamiz!`);
@@ -635,23 +912,24 @@ class AppController {
     const body = document.getElementById("lesson-body");
     const footer = document.getElementById("lesson-footer");
 
+    // Update progress to 100%
+    const pBar = document.getElementById("lesson-progress-bar");
+    if (pBar) pBar.style.width = "100%";
+
     body.innerHTML = `
-      <div style="text-align: center; padding: 2rem 0;">
-        <div style="font-size: 4rem; margin-bottom: 0.8rem;">🏆</div>
-        <h2 style="font-family: var(--font-heading); font-size: 1.8rem; color: var(--duo-green); margin-bottom: 8px;">
-          Dars Muvaffaqiyatli Yakunlandi!
-        </h2>
-        <p style="color: var(--text-secondary); font-size: 1rem; margin-bottom: 1.5rem;">
-          Siz yangi so'z va grammatikani o'rgandingiz. Keyingi dars ochildi!
-        </p>
-        <div style="display: inline-flex; gap: 20px; background: rgba(255, 255, 255, 0.05); padding: 12px 24px; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
-          <div>
-            <div style="font-size: 1.5rem; font-weight: 800; color: var(--duo-yellow);">+50</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted);">XP QO'SHILDI</div>
+      <div class="lesson-complete-container">
+        <div class="complete-trophy">🏆</div>
+        <h2 class="complete-title">Dars Muvaffaqiyatli Yakunlandi!</h2>
+        <p class="complete-desc">Siz yangi so'z va grammatikani o'rgandingiz. Keyingi dars ochildi!</p>
+        <div class="complete-stats">
+          <div class="complete-stat">
+            <div class="complete-stat-num">+50</div>
+            <div class="complete-stat-label">XP QO'SHILDI</div>
           </div>
-          <div style="border-left: 1px solid var(--border-color); padding-left: 20px;">
-            <div style="font-size: 1.5rem; font-weight: 800; color: var(--duo-green);">100%</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted);">TUGALLANDI</div>
+          <div class="complete-stat-divider"></div>
+          <div class="complete-stat">
+            <div class="complete-stat-num">100%</div>
+            <div class="complete-stat-label">TUGALLANDI</div>
           </div>
         </div>
       </div>
@@ -668,7 +946,15 @@ class AppController {
   }
 
   speakText(text) {
-    window.groqTutor.speakText(text);
+    if (window.groqTutor && window.groqTutor.speakText) {
+      window.groqTutor.speakText(text);
+    } else if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang = "en-US";
+      utt.rate = 0.9;
+      window.speechSynthesis.speak(utt);
+    }
   }
 
   // ==========================================
@@ -803,7 +1089,7 @@ class AppController {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert("⚠️ Mikrofon ovozini tanish uchun xavfsiz HTTPS kerak. Pastdagi maydonga matn yozishingiz mumkin!");
+      this.showToast("⚠️ Mikrofon faqat HTTPS da ishlaydi. Matn yozing!", "warning");
       return;
     }
 
@@ -851,7 +1137,7 @@ class AppController {
   }
 
   // ==========================================
-  // SHADOWING STUDIO (NO BLOCKING ALERTS)
+  // SHADOWING STUDIO
   // ==========================================
   initShadowingStudio() {
     const container = document.getElementById("shadowing-container");
@@ -866,7 +1152,7 @@ class AppController {
           <span class="unit-badge status-available">${drill.level}</span>
           <span style="font-size: 0.8rem; color: var(--text-muted);">${drill.phonetic}</span>
         </div>
-        <h3 style="font-family: var(--font-heading); font-size: 1.25rem; margin-bottom: 8px;">${drill.title}</h3>
+        <h3 style="font-family: var(--font-heading); font-size: 1.15rem; margin-bottom: 8px;">${drill.title}</h3>
         <div class="shadowing-text-display">"${drill.text}"</div>
         <div class="shadowing-uzbek"><strong>Tarjimasi:</strong> ${drill.uzbek}</div>
         <p style="font-size: 0.85rem; color: #38bdf8; margin-bottom: 14px;">💡 <strong>Texnika:</strong> ${drill.tips}</p>
@@ -946,12 +1232,12 @@ class AppController {
   // ==========================================
   initSettings() {
     const input = document.getElementById("settings-groq-key");
-    if (input) {
+    if (input && window.groqTutor) {
       input.value = window.groqTutor.getApiKey();
     }
     const nameInput = document.getElementById("settings-user-name");
     if (nameInput) {
-      nameInput.value = this.state.userName || "Jamoliddin";
+      nameInput.value = this.state.userName || "";
     }
   }
 
@@ -960,7 +1246,7 @@ class AppController {
     if (input && input.value.trim()) {
       window.groqTutor.setApiKey(input.value.trim());
       window.soundFX.playCorrect();
-      alert("✅ Groq API kaliti muvaffaqiyatli saqlandi!");
+      this.showToast("✅ Groq API kaliti muvaffaqiyatli saqlandi!", "success");
     }
   }
 
@@ -968,7 +1254,7 @@ class AppController {
     if (!name || !name.trim()) return;
     this.state.userName = name.trim();
     this.saveState();
-    alert("✅ Ismingiz saqlandi: " + this.state.userName);
+    this.showToast("✅ Ismingiz saqlandi: " + this.state.userName, "success");
   }
 
   exportProgress() {
@@ -976,12 +1262,12 @@ class AppController {
       const dataStr = btoa(unescape(encodeURIComponent(JSON.stringify(this.state))));
       if (navigator.clipboard) {
         navigator.clipboard.writeText(dataStr);
-        alert("✅ Natijalaringiz nusxalandi! Ushbu kodni do'stingizga berishingiz yoki boshqa telefonga o'tkazishingiz mumkin.");
+        this.showToast("✅ Natijalaringiz nusxalandi! Bu kodni do'stingizga berishingiz mumkin.", "success");
       } else {
         prompt("Ushbu zaxira kodini nusxalab oling:", dataStr);
       }
     } catch(e) {
-      alert("Nusxalashda xatolik.");
+      this.showToast("Nusxalashda xatolik.", "error");
     }
   }
 
@@ -994,12 +1280,12 @@ class AppController {
         this.state = decoded;
         this.saveState();
         this.renderRoadmap();
-        alert("🎉 Natijalaringiz muvaffaqiyatli tiklandi!");
+        this.showToast("🎉 Natijalaringiz muvaffaqiyatli tiklandi!", "success");
       } else {
-        alert("Noto'g'ri kod formati.");
+        this.showToast("Noto'g'ri kod formati.", "error");
       }
     } catch(e) {
-      alert("Kod xato kiritildi.");
+      this.showToast("Kod xato kiritildi.", "error");
     }
   }
 
@@ -1010,7 +1296,7 @@ class AppController {
       this.saveState();
       this.renderRoadmap();
       this.switchTab("roadmap");
-      alert("Natijalar tozalandi. 1-darsdan boshlashingiz mumkin!");
+      this.showToast("Natijalar tozalandi. 1-darsdan boshlashingiz mumkin!", "info");
     }
   }
 

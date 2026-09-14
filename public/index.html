@@ -2,45 +2,55 @@
 <html lang="uz">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>EngMastery AI - Duolingo & IELTS Speaking Platformasi</title>
   <meta name="description" content="A1 darajadan IELTS 7.5+ gacha bo'lgan interaktiv ingliz tili platformasi. Duolingo uslubidagi gamifikatsiya va Groq Llama 3.3 70B AI Speaking Tutor bilan to'liq jihozlangan.">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦅</text></svg>">
+  <!-- PWA/Mobile support -->
+  <meta name="theme-color" content="#090d16">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 
   <!-- Confetti Canvas -->
   <canvas id="confetti-canvas"></canvas>
 
+  <!-- Mobile Sidebar Overlay -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
   <!-- Top Header Navigation -->
   <header class="app-header">
-    <div class="brand-container" onclick="app.switchTab('roadmap')">
-      <div class="brand-logo-icon">🦅</div>
-      <div>
-        <span class="brand-title">EngMastery</span>
-        <span class="brand-badge">AI 70B PRO</span>
+    <div class="header-left">
+      <button id="mobile-menu-toggle" class="mobile-menu-btn" aria-label="Menyu">☰</button>
+      <div class="brand-container" onclick="app.switchTab('roadmap')">
+        <div class="brand-logo-icon">🦅</div>
+        <div>
+          <span class="brand-title">EngMastery</span>
+          <span class="brand-badge">AI 70B PRO</span>
+        </div>
       </div>
     </div>
 
     <div class="header-stats">
       <div class="stat-pill stat-streak" title="Ketma-ket o'rganilgan kunlar soni">
         <span>🔥</span>
-        <span id="stat-streak-val">3</span>
-        <span style="font-size: 0.75rem; color: var(--text-muted);">KUN</span>
+        <span id="stat-streak-val">1</span>
+        <span class="stat-label">KUN</span>
       </div>
       <div class="stat-pill stat-xp" title="Jami to'plangan tajriba ballari">
         <span>⭐</span>
-        <span id="stat-xp-val">120</span>
-        <span style="font-size: 0.75rem; color: var(--text-muted);">XP</span>
+        <span id="stat-xp-val">0</span>
+        <span class="stat-label">XP</span>
       </div>
-      <div class="stat-pill stat-hearts" title="Jonlar soni (Xato qilganda kamayadi)">
+      <div class="stat-pill stat-hearts" title="Jonlar soni">
         <span>❤️</span>
         <span id="stat-hearts-val">5</span>
       </div>
       <div class="groq-status-badge" onclick="app.switchTab('settings')" title="Groq Llama 3.3 70B ulangan">
         <span class="dot"></span>
-        <span>Groq Llama 3.3 70B</span>
+        <span>Groq AI</span>
       </div>
     </div>
   </header>
@@ -77,7 +87,7 @@
         <li class="nav-item">
           <button data-tab="settings">
             <span class="nav-icon">⚙️</span>
-            <span>Server & Sozlamalar</span>
+            <span>Sozlamalar</span>
           </button>
         </li>
       </ul>
@@ -85,7 +95,7 @@
       <div class="sidebar-user-card">
         <div class="avatar-circle">J</div>
         <div class="user-info">
-          <div class="name">Jamoliddin</div>
+          <div class="name">O'rganuvchi</div>
           <div class="target">🎯 Maqsad: IELTS 7.5+</div>
         </div>
       </div>
@@ -99,7 +109,7 @@
         <div class="section-header">
           <h2><span>🗺️</span> Bosqichma-bosqich Darslar Xaritasi</h2>
           <p>
-            Har bir darsni to'liq tugatib, mashqlarni bajarganingizdan so'ng keyingi daraja avtomatik ochiladi. 
+            Har bir darsda avval <strong>yangi so'zlar va grammatika o'rgatiladi</strong>, keyin mashqlar orqali tekshiriladi. 
             A1 dan boshlab IELTS 7.5+ gacha bo'lgan to'liq yo'l!
           </p>
         </div>
@@ -129,49 +139,47 @@
               </div>
 
               <div class="mode-picker-list">
-                <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">
-                  Suhbat Rejimlari:
-                </div>
+                <div class="mode-picker-label">Suhbat Rejimlari:</div>
                 <button class="mode-btn active" data-mode="ielts_examiner">
                   <span>🎓</span>
                   <div>
                     <div>IELTS Examiner (David)</div>
-                    <small style="color: var(--text-muted); font-size: 0.75rem;">Part 1, 2, 3 va Band ballari</small>
+                    <small>Part 1, 2, 3 va Band ballari</small>
                   </div>
                 </button>
                 <button class="mode-btn" data-mode="job_interview">
                   <span>💼</span>
                   <div>
                     <div>Job Interview (HR)</div>
-                    <small style="color: var(--text-muted); font-size: 0.75rem;">Ish suhbati va STAR metodi</small>
+                    <small>Ish suhbati va STAR metodi</small>
                   </div>
                 </button>
                 <button class="mode-btn" data-mode="cafe">
                   <span>☕</span>
                   <div>
                     <div>London Barista</div>
-                    <small style="color: var(--text-muted); font-size: 0.75rem;">Kafeda buyurtma berish</small>
+                    <small>Kafeda buyurtma berish</small>
                   </div>
                 </button>
                 <button class="mode-btn" data-mode="travel">
                   <span>✈️</span>
                   <div>
                     <div>Airport & Travel</div>
-                    <small style="color: var(--text-muted); font-size: 0.75rem;">Bojxona va mehmonxona</small>
+                    <small>Bojxona va mehmonxona</small>
                   </div>
                 </button>
                 <button class="mode-btn" data-mode="free_chat">
                   <span>💬</span>
                   <div>
                     <div>Erkin Suhbat (Emma)</div>
-                    <small style="color: var(--text-muted); font-size: 0.75rem;">Kundalik qiziq mavzular</small>
+                    <small>Kundalik qiziq mavzular</small>
                   </div>
                 </button>
               </div>
             </div>
 
-            <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: var(--radius-md); font-size: 0.8rem; color: #94a3b8;">
-              ⚡ <strong>Tezkor Maslahat:</strong> Mikrofon tugmasini bosing yoki klaviaturada yozing. AI avtomatik ravishda ovoz chiqarib javob beradi!
+            <div class="ai-tip-box">
+              ⚡ <strong>Maslahat:</strong> Mikrofon tugmasini bosing yoki yozing. AI ovozda javob beradi!
             </div>
           </div>
 
@@ -179,10 +187,10 @@
           <div class="ai-chat-screen">
             <div class="chat-header">
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="display: inline-block; width: 10px; height: 10px; background: #22c55e; border-radius: 50%;"></span>
+                <span class="chat-live-dot"></span>
                 <span style="font-weight: 700;">Jonli Muloqot Sessiyasi</span>
               </div>
-              <button class="btn-duo btn-duo-secondary" style="padding: 6px 14px; font-size: 0.8rem;" onclick="window.groqTutor.stopSpeaking()">
+              <button class="btn-duo btn-duo-secondary btn-sm" onclick="window.groqTutor.stopSpeaking()">
                 ⏹️ Ovozni to'xtatish
               </button>
             </div>
@@ -193,8 +201,8 @@
 
             <div class="chat-input-bar">
               <button id="ai-mic-btn" class="chat-mic-btn" title="Mikrofon orqali gapirish">🎙️</button>
-              <input type="text" id="ai-chat-input" class="chat-input-field" placeholder="Inglizcha gapiring yoki xabar yozing (Enter bosing)..." autocomplete="off">
-              <button id="ai-send-btn" class="btn-duo btn-duo-purple">Yuborish ➔</button>
+              <input type="text" id="ai-chat-input" class="chat-input-field" placeholder="Inglizcha yozing (Enter bosing)..." autocomplete="off">
+              <button id="ai-send-btn" class="btn-duo btn-duo-purple btn-sm">Yuborish ➔</button>
             </div>
           </div>
         </div>
@@ -203,9 +211,8 @@
       <!-- TAB 3: SHADOWING STUDIO -->
       <section id="tab-shadowing" class="tab-pane">
         <div class="section-header">
-          <h2><span>🎧</span> Shadowing Studiyasi (Nutq Musqullarini Mashq Qildirish)</h2>
+          <h2><span>🎧</span> Shadowing Studiyasi</h2>
           <p>
-            Ustozlar va poliglotalar tavsiya qilgan eng kuchli metod. 
             Native speaker bilan bir vaqtda gapirish orqali o'zbekcha tarjima qilish to'sig'ini sindiring.
           </p>
         </div>
@@ -284,55 +291,52 @@
       <!-- TAB 5: SETTINGS & SERVER DEPLOYMENT -->
       <section id="tab-settings" class="tab-pane">
         <div class="section-header">
-          <h2><span>⚙️</span> Server va Tizim Sozlamalari</h2>
+          <h2><span>⚙️</span> Sozlamalar</h2>
           <p>
-            Groq API kalitini boshqarish va ushbu platformani o'z shaxsiy serveringizga yoki bepul xostinglarga joylashtirish bo'yicha ko'rsatma.
+            Profil, Groq API kaliti va ma'lumotlar xavfsizligi.
           </p>
         </div>
 
         <div class="deploy-card">
-          <h3 style="font-family: var(--font-heading); margin-bottom: 12px;">👤 Foydalanuvchi Profili va Zaxira (Backup)</h3>
-          <p style="color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 14px;">
-            Har bir insonning o'z natijalari (XP, darslar, jonlar) faqat o'z telefonida mustaqil saqlanadi. 
-            Do'stingiz kirsa, uniki o'zida alohida bo'ladi!
+          <h3 style="font-family: var(--font-heading); margin-bottom: 12px;">👤 Foydalanuvchi Profili</h3>
+          <p class="settings-info-text">
+            🔐 <strong>Ma'lumotlar xavfsizligi:</strong> Har bir insonning natijalari (XP, darslar, jonlar) faqat <strong>o'z telefonida/brauzerida</strong> mustaqil saqlanadi. 
+            Do'stingiz kirsa — uning natijalari o'zida alohida bo'ladi, siznikiga ta'sir qilmaydi!
           </p>
           <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
             <input type="text" id="settings-user-name" class="chat-input-field" placeholder="Ismingiz (masalan: Jamoliddin)" style="max-width: 320px;">
             <button class="btn-duo btn-duo-blue" onclick="app.updateUserName(document.getElementById('settings-user-name').value)">Ismni saqlash</button>
           </div>
           <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button class="btn-duo btn-duo-secondary" onclick="app.exportProgress()">💾 Natijalarni nusxalash (Eksport)</button>
-            <button class="btn-duo btn-duo-secondary" onclick="app.importProgress()">📥 Zaxiradan tiklash (Import)</button>
+            <button class="btn-duo btn-duo-secondary" onclick="app.exportProgress()">💾 Natijalarni nusxalash</button>
+            <button class="btn-duo btn-duo-secondary" onclick="app.importProgress()">📥 Zaxiradan tiklash</button>
           </div>
         </div>
 
         <div class="deploy-card">
-          <h3 style="font-family: var(--font-heading); margin-bottom: 12px;">🔑 Groq API Kaliti Sozlamasi</h3>
+          <h3 style="font-family: var(--font-heading); margin-bottom: 12px;">🔑 Groq API Kaliti</h3>
           <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 14px;">
             Siz taqdim etgan kalit tizimga o'rnatilgan. Xohlasangiz boshqa kalit kiritishingiz mumkin:
           </p>
-          <div style="display: flex; gap: 12px; max-width: 650px;">
-            <input type="password" id="settings-groq-key" class="chat-input-field" placeholder="Groq API kaliti...">
+          <div style="display: flex; gap: 12px; max-width: 650px; flex-wrap: wrap;">
+            <input type="password" id="settings-groq-key" class="chat-input-field" placeholder="Groq API kaliti..." style="flex: 1; min-width: 200px;">
             <button class="btn-duo btn-duo-green" onclick="app.saveApiKeyFromInput()">Saqlash</button>
           </div>
         </div>
 
         <div class="deploy-card">
-          <h3 style="font-family: var(--font-heading); margin-bottom: 16px;">🚀 Serverga Joylash (Deployment) Bo'yicha Tezkor Qo'llanma</h3>
+          <h3 style="font-family: var(--font-heading); margin-bottom: 16px;">🚀 Serverga Joylash Qo'llanmasi</h3>
 
           <div class="deploy-step">
-            <h4 style="color: var(--duo-blue);">1-Variant: Mahalliy Kompyuterda Ishga Tushirish (Node.js)</h4>
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">Loyihani ochib, terminalda quyidagi buyruqni bering:</p>
+            <h4 style="color: var(--duo-blue);">1-Variant: Mahalliy Kompyuter (Node.js)</h4>
             <div class="code-snippet">
               <span>npm install && npm start</span>
               <button class="btn-copy" onclick="navigator.clipboard.writeText('npm install && npm start')">Nusxalash</button>
             </div>
-            <small style="color: var(--text-muted);">So'ngra brauzerda <code>http://localhost:3000</code> manzilini ochasiz.</small>
           </div>
 
           <div class="deploy-step">
-            <h4 style="color: var(--duo-green);">2-Variant: 100% Bepul Vercel yoki Netlify orqali chiqarish (1 daqiqada)</h4>
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">Ushbu loyiha static frontend bo'lgani sababli Vercel yoki Netlify-ga shunchaki <code>eng/public</code> papkasini tashlash kifoya!</p>
+            <h4 style="color: var(--duo-green);">2-Variant: Bepul Vercel/Netlify</h4>
             <div class="code-snippet">
               <span>npx vercel ./public</span>
               <button class="btn-copy" onclick="navigator.clipboard.writeText('npx vercel ./public')">Nusxalash</button>
@@ -340,8 +344,7 @@
           </div>
 
           <div class="deploy-step">
-            <h4 style="color: var(--duo-purple);">3-Variant: Shaxsiy Linux VPS Serverga Joylash (Ubuntu / Nginx)</h4>
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">VPS da Nginx orqali html fayllarni `/var/www/html` ga nusxalang yoki PM2 orqali server.js ni yurgizing:</p>
+            <h4 style="color: var(--duo-purple);">3-Variant: Shaxsiy VPS Server</h4>
             <div class="code-snippet">
               <span>pm2 start server.js --name "engmastery"</span>
               <button class="btn-copy" onclick="navigator.clipboard.writeText('pm2 start server.js --name &quot;engmastery&quot;')">Nusxalash</button>
@@ -350,7 +353,7 @@
 
           <div style="margin-top: 1.5rem;">
             <button class="btn-duo btn-duo-secondary" onclick="app.resetAllProgress()" style="color: #ff6b6b;">
-              ⚠️ Barcha o'rganilgan darslarni qaytadan boshlash
+              ⚠️ Barcha natijalarni tozalash
             </button>
           </div>
         </div>
@@ -358,6 +361,30 @@
 
     </main>
   </div>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="mobile-bottom-nav">
+    <button class="bottom-nav-btn active" data-tab="roadmap" onclick="app.switchTab('roadmap')">
+      <span>🗺️</span>
+      <small>Darslar</small>
+    </button>
+    <button class="bottom-nav-btn" data-tab="ai-room" onclick="app.switchTab('ai-room')">
+      <span>🎙️</span>
+      <small>AI Chat</small>
+    </button>
+    <button class="bottom-nav-btn" data-tab="shadowing" onclick="app.switchTab('shadowing')">
+      <span>🎧</span>
+      <small>Shadowing</small>
+    </button>
+    <button class="bottom-nav-btn" data-tab="library" onclick="app.switchTab('library')">
+      <span>📚</span>
+      <small>Kutubxona</small>
+    </button>
+    <button class="bottom-nav-btn" data-tab="settings" onclick="app.switchTab('settings')">
+      <span>⚙️</span>
+      <small>Sozlama</small>
+    </button>
+  </nav>
 
   <!-- LESSON PRACTICE MODAL (DUOLINGO ENGINE) -->
   <div id="lesson-modal" class="modal-backdrop">
