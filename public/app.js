@@ -23,11 +23,11 @@ class AppController {
       }
     }
     return {
-      xp: 120,
-      streak: 3,
+      xp: 0,
+      streak: 1,
       hearts: 5,
-      completedUnits: ["l1-u1"], // 1st unit completed for demo, or unlocked
-      unlockedUnits: ["l1-u1", "l1-u2"],
+      completedUnits: [], // Yangi boshlagan foydalanuvchi uchun toza holat
+      unlockedUnits: ["l1-u1"], // Faqat 1-dars ochiq, qolgani bosqichma-bosqich ochiladi
       userLevel: "A1 Starter",
       lastActiveDate: new Date().toDateString()
     };
@@ -41,6 +41,7 @@ class AppController {
   init() {
     this.updateHeaderStats();
     this.bindNavigation();
+    this.switchTab("roadmap"); // Har doim Darslar xaritasidan boshlanadi
     this.renderRoadmap();
     this.initAIInteractions();
     this.initShadowingStudio();
@@ -106,12 +107,12 @@ class AppController {
         if (isCompleted) {
           statusClass = "completed";
           statusBadge = `<span class="unit-badge status-completed">✓ Bajarilgan (+50 XP)</span>`;
-          btnText = "Qayta takrorlash";
+          btnText = "Qayta takrorlash 🔄";
           btnDisabled = "";
         } else if (isUnlocked) {
           statusClass = "available";
-          statusBadge = `<span class="unit-badge status-available">⚡ Ochiq</span>`;
-          btnText = "Darsni boshlash";
+          statusBadge = `<span class="unit-badge status-available">⚡ Yangi Dars (Ochiq)</span>`;
+          btnText = "Darsni boshlash ➔";
           btnDisabled = "";
         }
 
