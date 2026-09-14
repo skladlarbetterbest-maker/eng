@@ -1,0 +1,24 @@
+{
+  "name": "eng-mastery-ai",
+  "version": "1.0.0",
+  "description": "Duolingo-style gamified English learning platform with Groq AI Speaking Partner from A1 to IELTS 7.5+",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  },
+  "keywords": [
+    "english",
+    "ielts",
+    "groq",
+    "duolingo",
+    "speaking",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT"
+}
